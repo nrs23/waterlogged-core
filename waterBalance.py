@@ -1,45 +1,58 @@
 from functools import reduce
 import requests
 
-size_of_watering_can_in_liters = 5
-liters_to_mm_per_square_meter = 1
 
-url = "https://api.open-meteo.com/v1/forecast"
-payload = {"latitude": 50.83,
-           "longitude": -0.14,
-           "daily": ["precipitation_sum", "et0_fao_evapotranspiration"],
-           "timezone": "auto",
-           "past_days": 7}
-response = requests.get(url, params=payload)
-response_json = response.json()
+def water_balance(latitude, longitude):
 
-for key in response_json:
-    print(key, response_json[key])
+    url = "https://api.open-meteo.com/v1/forecast"
+    payload = {"latitude": latitude,
+               "longitude": longitude,
+               "daily": ["precipitation_sum", "et0_fao_evapotranspiration"],
+               "timezone": "auto",
+               "past_days": 7}
+    response = requests.get(url, params=payload)
+    response_json = response.json()
 
-precipitation_observation = response_json["daily"]["precipitation_sum"][:7]
-precipitation_prediction = response_json["daily"]["precipitation_sum"][7:]
-et0_observation = response_json["daily"]["et0_fao_evapotranspiration"][:7]
-et0_prediction = response_json["daily"]["et0_fao_evapotranspiration"][7:]
+    precipitation = response_json["daily"]["precipitation_sum"]
+    et0 = response_json["daily"]["et0_fao_evapotranspiration"]
 
-observations = zip(precipitation_observation, et0_observation)
-observed_balance = reduce(lambda x, y: x + y,
-                          [precipitation - et0
-                           for (precipitation, et0)
-                           in observations])
+    data = list(zip(precipitation, et0))
+    observations = data[:7]
+    predictions = data[7:]
 
-predictions = zip(precipitation_prediction, et0_prediction)
-predicted_balance = reduce(lambda x, y: x + y,
-                           [precipitation - et0
-                            for (precipitation, et0)
-                            in predictions])
+    observed_balance = reduce(lambda x, y: x + y,
+                              [precipitation - et0
+                               for (precipitation, et0)
+                               in observations])
 
-print(observed_balance)
-print(predicted_balance)
+    predicted_balance = reduce(lambda x, y: x + y,
+                               [precipitation - et0
+                                for (precipitation, et0)
+                                in predictions])
 
-total_balance = observed_balance + predicted_balance
-print(total_balance)
+    water_balance = observed_balance + predicted_balance
+    return {"observed": observed_balance,
+            "predicted": predicted_balance,
+            "total": water_balance}
 
-mm_per_can = liters_to_mm_per_square_meter * size_of_watering_can_in_liters
-print(mm_per_can)
-suggested_cans = - total_balance / mm_per_can if total_balance < 0 else 0
-print(suggested_cans)
+
+if __name__ == "__main__":
+    # Brighton coordinates
+    latitude = 50.83
+    longitude = -0.14
+    size_of_watering_can = 5  # Litres
+    mm_per_litre = 1  # Number of mm of water per litre applied
+
+    water_balance = water_balance(latitude, longitude)
+
+    print(f'Observed mm of water in or out of the soil in last week: '
+          f'{water_balance["observed"]:.0f}')
+    print(f'Predicted mm of water in or out of the soil over next week: '
+          f'{water_balance["predicted"]:.0f}')
+    suggested_litres = (- water_balance['total'] / mm_per_litre
+                        if water_balance['total'] < 0 else 0)
+    suggested_cans = suggested_litres/size_of_watering_can
+    print(f'Suggest applying {suggested_litres:.0f} litres of water '
+          'to your garden '
+          f'(or {suggested_cans:.0f}x {size_of_watering_can}L cans) '
+          'per square meter over the coming week')
