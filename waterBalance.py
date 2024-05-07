@@ -3,7 +3,17 @@ import requests
 
 
 def water_balance(latitude, longitude):
+    """
+    Returns observed, predicted and total water in or out of the soil (in mm)
+    at the given coordinates
 
+    Arguments:
+        latitude: float
+        longitude: float
+
+    Returns:
+        dict of { str: int }
+    """
     url = "https://api.open-meteo.com/v1/forecast"
     payload = {"latitude": latitude,
                "longitude": longitude,
@@ -41,7 +51,7 @@ if __name__ == "__main__":
     latitude = 50.83
     longitude = -0.14
     size_of_watering_can = 5  # Litres
-    mm_per_litre = 1  # Number of mm of water per litre applied
+    mm_per_litre = 1  # Number of mm per litre applied to a square meter
 
     water_balance = water_balance(latitude, longitude)
 
