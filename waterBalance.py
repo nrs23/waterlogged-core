@@ -21,6 +21,10 @@ def water_balance(latitude, longitude):
                "timezone": "auto",
                "past_days": 7}
     response = requests.get(url, params=payload)
+
+    if response.status_code != 200:
+        response.raise_for_status()
+
     response_json = response.json()
 
     precipitation = response_json["daily"]["precipitation_sum"]
